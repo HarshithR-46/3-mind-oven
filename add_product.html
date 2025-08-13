@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Product - 3-Mind-Oven Admin</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      background: white;
+      margin: auto;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0px 6px 15px rgba(0,0,0,0.1);
+      animation: fadeIn 0.6s ease-in-out;
+    }
+    h1 {
+      text-align: center;
+      color: #FF6A00;
+      margin-bottom: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    input, textarea, select {
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #FF6A00;
+      box-shadow: 0px 0px 5px rgba(255,106,0,0.5);
+      outline: none;
+    }
+    button {
+      padding: 12px;
+      background: #FF6A00;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease-in-out, transform 0.2s;
+    }
+    button:hover {
+      background: #e05b00;
+      transform: translateY(-2px);
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .image-preview {
+      margin-top: 10px;
+      text-align: center;
+    }
+    .image-preview img {
+      max-width: 150px;
+      border-radius: 8px;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Add New Product</h1>
+  <form id="productForm">
+    <input type="text" id="name" placeholder="Product Name" required />
+    <textarea id="description" placeholder="Description"></textarea>
+    <input type="number" id="price" placeholder="Price" step="0.01" min="0" required />
+    <input type="number" id="quantity" placeholder="Quantity" min="1" required />
+    <select id="type" required>
+      <option value="">Select Type</option>
+      <option>Pizza Oven</option>
+      <option>Bakery Oven</option>
+      <option>Industrial Oven</option>
+    </select>
+    <select id="fuel_type" required>
+      <option value="">Select Fuel Type</option>
+      <option>Gas</option>
+      <option>Electric</option>
+    </select>
+    <input type="text" id="capacity" placeholder="Capacity (e.g., 4 trays)" />
+    <input type="file" id="image" accept="image/*" required />
+    <div class="image-preview" id="imagePreview"></div>
+    <button type="submit">Add Product</button>
+  </form>
+  <p id="message"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  const SUPABASE_URL = "https://vddlgrsahdxeaqccgonl.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkZGxncnNhaGR4ZWFxY2Nnb25sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDI5MTMsImV4cCI6MjA3MDU3ODkxM30.gl1V5WsTylNkS3geEJZQW3JvEoZNi3FMiAhLU9TFP5c";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const form = document.getElementById('productForm');
+  const messageEl = document.getElementById('message');
+  const imageInput = document.getElementById('image');
+  const imagePreview = document.getElementById('imagePreview');
+
+  // Live image preview
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      imagePreview.innerHTML = '';
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    messageEl.textContent = "";
+    messageEl.className = "";
+
+    const name = document.getElementById('name').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const price = parseFloat(document.getElementById('price').value);
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const type = document.getElementById('type').value;
+    const fuel_type = document.getElementById('fuel_type').value;
+    const capacity = document.getElementById('capacity').value.trim();
+    const imageFile = imageInput.files[0];
+
+    if (!imageFile) {
+      messageEl.textContent = "Please select an image.";
+      messageEl.className = "error";
+      return;
+    }
+    if (price < 0 || quantity <= 0) {
+      messageEl.textContent = "Please enter valid positive values for price and quantity.";
+      messageEl.className = "error";
+      return;
+    }
+
+    const fileName = `${Date.now()}-${imageFile.name}`;
+    const { error: imageError } = await supabaseClient.storage
+      .from('product-images')
+      .upload(fileName, imageFile);
+
+    if (imageError) {
+      messageEl.textContent = "Image upload failed: " + imageError.message;
+      messageEl.className = "error";
+      return;
+    }
+
+    const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/product-images/${fileName}`;
+    const { error: insertError } = await supabaseClient
+      .from('products')
+      .insert([{ name, description, price, quantity, type, fuel_type, capacity, image_url: imageUrl }]);
+
+    if (insertError) {
+      messageEl.textContent = "Failed to add product: " + insertError.message;
+      messageEl.className = "error";
+    } else {
+      messageEl.textContent = "✅ Product added successfully!";
+      messageEl.className = "success";
+      form.reset();
+      imagePreview.innerHTML = '';
+    }
+  });
+</script>
+
+</body>
+</html>
