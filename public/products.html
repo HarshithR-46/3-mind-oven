@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>All Products - 3-Mind Oven</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #fafafa;
+      color: #333;
+    }
+    header {
+      background-color: #111;
+      padding: 1rem 2rem;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 1.5rem;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+    nav a:hover {
+      color: #ff9800;
+    }
+    .filters {
+      max-width: 1200px;
+      margin: 2rem auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .filters select, .filters input {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      max-width: 1200px;
+      margin: auto;
+      padding: 0 2rem 4rem 2rem;
+    }
+    .product-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .product-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .product-card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+    }
+    .product-info {
+      padding: 1rem;
+    }
+    .product-info h3 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    .product-info p {
+      margin: 0.5rem 0;
+      color: #666;
+    }
+    footer {
+      background-color: #111;
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .filters {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>3-Mind Oven</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="#">Products</a>
+      <a href="#">Contact</a>
+    </nav>
+  </header>
+
+  <!-- Filters -->
+  <div class="filters">
+    <select id="filterType">
+      <option value="">All Types</option>
+      <option>Pizza Oven</option>
+      <option>Bakery Oven</option>
+      <option>Industrial Oven</option>
+    </select>
+    <select id="filterFuel">
+      <option value="">All Fuel Types</option>
+      <option>Gas</option>
+      <option>Electric</option>
+    </select>
+    <input type="number" id="filterMinPrice" placeholder="Min Price" min="0" />
+    <input type="number" id="filterMaxPrice" placeholder="Max Price" min="0" />
+    <button onclick="applyFilters()">Apply Filters</button>
+    <button onclick="resetFilters()">Reset</button>
+  </div>
+
+  <!-- Products Grid -->
+  <div id="products" class="products-grid"></div>
+
+  <footer>
+    &copy; 2025 3-Mind Oven. All rights reserved.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const SUPABASE_URL = "https://vddlgrsahdxeaqccgonl.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkZGxncnNhaGR4ZWFxY2Nnb25sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDI5MTMsImV4cCI6MjA3MDU3ODkxM30.gl1V5WsTylNkS3geEJZQW3JvEoZNi3FMiAhLU9TFP5c";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allProducts = [];
+
+    async function loadProducts() {
+      const { data, error } = await supabaseClient
+        .from('products')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) {
+        console.error("Error loading products:", error);
+        return;
+      }
+      allProducts = data;
+      displayProducts(data);
+    }
+
+    function displayProducts(products) {
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+      if (!products.length) {
+        container.innerHTML = `<p style="text-align:center;width:100%;">No products found.</p>`;
+        return;
+      }
+      products.forEach(product => {
+        const imgUrl = product.image_url || 'https://via.placeholder.com/400x220?text=No+Image';
+        container.innerHTML += `
+          <div class="product-card">
+            <img src="${imgUrl}" alt="${product.name}">
+            <div class="product-info">
+              <h3>${product.name}</h3>
+              <p>${product.description || ''}</p>
+              <p>Price: ₹${product.price}</p>
+              <p>Type: ${product.type}</p>
+              <p>Fuel: ${product.fuel_type}</p>
+              <p>Capacity: ${product.capacity || '-'}</p>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function applyFilters() {
+      const type = document.getElementById('filterType').value;
+      const fuel = document.getElementById('filterFuel').value;
+      const minPrice = parseFloat(document.getElementById('filterMinPrice').value) || 0;
+      const maxPrice = parseFloat(document.getElementById('filterMaxPrice').value) || Infinity;
+
+      const filtered = allProducts.filter(p => {
+        return (!type || p.type === type) &&
+               (!fuel || p.fuel_type === fuel) &&
+               (p.price >= minPrice && p.price <= maxPrice);
+      });
+
+      displayProducts(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById('filterType').value = '';
+      document.getElementById('filterFuel').value = '';
+      document.getElementById('filterMinPrice').value = '';
+      document.getElementById('filterMaxPrice').value = '';
+      displayProducts(allProducts);
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
